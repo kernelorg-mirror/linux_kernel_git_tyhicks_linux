@@ -555,6 +555,11 @@ static u32 seccomp_actions_logged = SECCOMP_LOG_KILL_PROCESS |
 				    SECCOMP_LOG_TRACE |
 				    SECCOMP_LOG_LOG;
 
+static inline bool current_is_audited(void)
+{
+	return audit_enabled && unlikely(!audit_dummy_context());
+}
+
 static inline void seccomp_log(unsigned long syscall, long signr, u32 action,
 			       bool requested)
 {
@@ -564,13 +569,16 @@ static inline void seccomp_log(unsigned long syscall, long signr, u32 action,
 	case SECCOMP_RET_ALLOW:
 		break;
 	case SECCOMP_RET_TRAP:
-		log = requested && seccomp_actions_logged & SECCOMP_LOG_TRAP;
+		log = (requested || current_is_audited()) &&
+		      seccomp_actions_logged & SECCOMP_LOG_TRAP;
 		break;
 	case SECCOMP_RET_ERRNO:
-		log = requested && seccomp_actions_logged & SECCOMP_LOG_ERRNO;
+		log = (requested || current_is_audited()) &&
+		      seccomp_actions_logged & SECCOMP_LOG_ERRNO;
 		break;
 	case SECCOMP_RET_TRACE:
-		log = requested && seccomp_actions_logged & SECCOMP_LOG_TRACE;
+		log = (requested || current_is_audited()) &&
+		      seccomp_actions_logged & SECCOMP_LOG_TRACE;
 		break;
 	case SECCOMP_RET_LOG:
 		log = seccomp_actions_logged & SECCOMP_LOG_LOG;
@@ -584,18 +592,14 @@ static inline void seccomp_log(unsigned long syscall, long signr, u32 action,
 	}
 
 	/*
-	 * Force an audit message to be emitted when the action is RET_KILL_*,
-	 * RET_LOG, or the FILTER_FLAG_LOG bit was set and the action is
-	 * allowed to be logged by the admin.
+	 * Emit an audit message when the action is RET_KILL_*, RET_LOG, the
+	 * FILTER_FLAG_LOG bit was set, or the current process is being
+	 * audited. The admin has the ability to silence any action from being
+	 * logged by removing the action name from the seccomp_actions_logged
+	 * sysctl.
 	 */
 	if (log)
-		return __audit_seccomp(syscall, signr, action);
-
-	/*
-	 * Let the audit subsystem decide if the action should be audited based
-	 * on whether the current task itself is being audited.
-	 */
-	return audit_seccomp(syscall, signr, action);
+		audit_seccomp(syscall, signr, action);
 }
 
 /*
