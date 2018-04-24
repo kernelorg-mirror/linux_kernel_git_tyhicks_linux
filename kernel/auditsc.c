@@ -2478,6 +2478,43 @@ void __audit_seccomp(unsigned long syscall, long signr, int code)
 	audit_log_end(ab);
 }
 
+void audit_seccomp_actions_logged(const char *names, int res)
+{
+	struct tty_struct *tty;
+	const struct cred *cred;
+	struct audit_buffer *ab;
+	char comm[sizeof(current->comm)];
+
+	if (!audit_enabled)
+		return;
+
+	ab = audit_log_start(NULL, GFP_KERNEL, AUDIT_CONFIG_CHANGE);
+	if (unlikely(!ab))
+		return;
+
+	cred = current_cred();
+	tty = audit_get_tty(current);
+	audit_log_format(ab, "pid=%d uid=%u auid=%u tty=%s ses=%u",
+			 task_tgid_nr(current),
+			 from_kuid(&init_user_ns, cred->uid),
+			 from_kuid(&init_user_ns,
+			 audit_get_loginuid(current)),
+			 tty ? tty_name(tty) : "(none)",
+			 audit_get_sessionid(current));
+	audit_put_tty(tty);
+	audit_log_task_context(ab);
+	audit_log_format(ab, " comm=");
+	audit_log_untrustedstring(ab, get_task_comm(comm, current));
+	audit_log_d_path_exe(ab, current->mm);
+	audit_log_format(ab, " op=seccomp-logging");
+
+	if (names)
+		audit_log_format(ab, " actions=\"%s\"", names);
+
+	audit_log_format(ab, " res=%d", res);
+	audit_log_end(ab);
+}
+
 struct list_head *audit_killed_trees(void)
 {
 	struct audit_context *ctx = current->audit_context;
