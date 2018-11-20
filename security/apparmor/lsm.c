@@ -761,6 +761,32 @@ static int apparmor_task_kill(struct task_struct *target, struct kernel_siginfo 
 	return error;
 }
 
+#ifdef CONFIG_KEYS
+
+static int apparmor_key_alloc(struct key *key, const struct cred *cred,
+			      unsigned long flags)
+{
+	return 0;
+}
+
+static void apparmor_key_free(struct key *key)
+{
+	return;
+}
+
+static int apparmor_key_permission(key_ref_t key_ref, const struct cred *cred,
+				   unsigned perm)
+{
+	return 0;
+}
+
+static int apparmor_key_getsecurity(struct key *key, char **_buffer)
+{
+	return 0;
+}
+
+#endif
+
 /**
  * apparmor_sk_alloc_security - allocate and attach the sk_security field
  */
@@ -1227,6 +1253,13 @@ static struct security_hook_list apparmor_hooks[] __lsm_ro_after_init = {
 	LSM_HOOK_INIT(task_getsecid, apparmor_task_getsecid),
 	LSM_HOOK_INIT(task_setrlimit, apparmor_task_setrlimit),
 	LSM_HOOK_INIT(task_kill, apparmor_task_kill),
+
+#ifdef CONFIG_KEYS
+	LSM_HOOK_INIT(key_alloc, apparmor_key_alloc),
+	LSM_HOOK_INIT(key_free, apparmor_key_free),
+	LSM_HOOK_INIT(key_permission, apparmor_key_permission),
+	LSM_HOOK_INIT(key_getsecurity, apparmor_key_getsecurity),
+#endif
 
 #ifdef CONFIG_AUDIT
 	LSM_HOOK_INIT(audit_rule_init, aa_audit_rule_init),
