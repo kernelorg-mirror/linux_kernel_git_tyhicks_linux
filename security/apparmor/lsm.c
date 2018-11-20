@@ -766,12 +766,18 @@ static int apparmor_task_kill(struct task_struct *target, struct kernel_siginfo 
 static int apparmor_key_alloc(struct key *key, const struct cred *cred,
 			      unsigned long flags)
 {
+	struct aa_label *label = aa_get_newest_cred_label(cred);
+
+	key->security = label;
 	return 0;
 }
 
 static void apparmor_key_free(struct key *key)
 {
-	return;
+	struct aa_label *label = key->security;
+
+	aa_put_label(label);
+	key->security = NULL;
 }
 
 static int apparmor_key_permission(key_ref_t key_ref, const struct cred *cred,
