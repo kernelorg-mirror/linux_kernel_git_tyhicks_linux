@@ -788,7 +788,11 @@ static int apparmor_key_permission(key_ref_t key_ref, const struct cred *cred,
 
 static int apparmor_key_getsecurity(struct key *key, char **_buffer)
 {
-	return 0;
+	struct aa_label *label = aa_get_newest_label(key->security);
+
+	return aa_label_asxprint(_buffer, labels_ns(label), label,
+				 FLAG_SHOW_MODE | FLAG_VIEW_SUBNS |
+				 FLAG_HIDDEN_UNCONFINED, GFP_KERNEL);
 }
 
 #endif
