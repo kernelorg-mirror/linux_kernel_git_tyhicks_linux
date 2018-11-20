@@ -34,6 +34,7 @@
 #include "include/cred.h"
 #include "include/file.h"
 #include "include/ipc.h"
+#include "include/key.h"
 #include "include/net.h"
 #include "include/path.h"
 #include "include/label.h"
@@ -783,7 +784,14 @@ static void apparmor_key_free(struct key *key)
 static int apparmor_key_permission(key_ref_t key_ref, const struct cred *cred,
 				   unsigned perm)
 {
-	return 0;
+	struct aa_label *label = aa_get_newest_cred_label(cred);
+	int error = 0;
+
+	if (!unconfined(label))
+		error = aa_key_perm(key_ref, label, perm);
+	aa_put_label(label);
+
+	return error;
 }
 
 static int apparmor_key_getsecurity(struct key *key, char **_buffer)
