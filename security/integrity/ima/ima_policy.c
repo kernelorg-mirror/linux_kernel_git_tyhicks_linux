@@ -1000,6 +1000,12 @@ static bool ima_validate_rule(struct ima_rule_entry *entry)
 		case KEXEC_KERNEL_CHECK:
 		case KEXEC_INITRAMFS_CHECK:
 		case POLICY_CHECK:
+			if (entry->flags & ~(IMA_FUNC | IMA_MASK | IMA_FSMAGIC |
+					     IMA_UID | IMA_FOWNER | IMA_FSUUID |
+					     IMA_INMASK | IMA_EUID | IMA_PCR |
+					     IMA_FSNAME))
+				return false;
+
 			break;
 		case KEXEC_CMDLINE:
 			if (entry->action & ~(MEASURE | DONT_MEASURE))
@@ -1027,7 +1033,8 @@ static bool ima_validate_rule(struct ima_rule_entry *entry)
 		default:
 			return false;
 		}
-	}
+	} else if (entry->flags & IMA_KEYRINGS)
+		return false;
 
 	return true;
 }
@@ -1209,7 +1216,6 @@ static int ima_parse_rule(char *rule, struct ima_rule_entry *entry)
 			keyrings_len = strlen(args[0].from) + 1;
 
 			if ((entry->keyrings) ||
-			    (entry->func != KEY_CHECK) ||
 			    (keyrings_len < 2)) {
 				result = -EINVAL;
 				break;
