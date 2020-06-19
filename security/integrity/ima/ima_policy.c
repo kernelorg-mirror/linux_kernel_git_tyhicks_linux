@@ -261,6 +261,28 @@ static void ima_lsm_free_rule(struct ima_rule_entry *entry)
 		security_filter_rule_free(entry->lsm[i].rule);
 		kfree(entry->lsm[i].args_p);
 	}
+}
+
+static void ima_free_rule(struct ima_rule_entry *entry)
+{
+	if (!entry)
+		return;
+
+	/*
+	 * entry->template->fields can be allocated in ima_parse_rule() but,
+	 * without proper reference counting on struct ima_template desc
+	 * objects, we cannot free fields here since the memory is owned by the
+	 * defined_templates list
+	 */
+
+	/*
+	 * When freeing newly added members here, carefully consider if you
+	 * need to disown any references after the shallow copy in
+	 * ima_lsm_copy_rule()
+	 */
+	kfree(entry->fsname);
+	kfree(entry->keyrings);
+	ima_lsm_free_rule(entry);
 	kfree(entry);
 }
 
@@ -298,10 +320,19 @@ static struct ima_rule_entry *ima_lsm_copy_rule(struct ima_rule_entry *entry)
 			pr_warn("rule for LSM \'%s\' is undefined\n",
 				(char *)entry->lsm[i].args_p);
 	}
+
+	/* Disown all references that were shallow copied */
+	entry->fsname = NULL;
+	entry->keyrings = NULL;
+	entry->template = NULL;
 	return nentry;
 
 out_err:
-	ima_lsm_free_rule(nentry);
+	/* Disown all references that were shallow copied */
+	nentry->fsname = NULL;
+	nentry->keyrings = NULL;
+	nentry->template = NULL;
+	ima_free_rule(nentry);
 	return NULL;
 }
 
@@ -315,7 +346,7 @@ static int ima_lsm_update_rule(struct ima_rule_entry *entry)
 
 	list_replace_rcu(&entry->list, &nentry->list);
 	synchronize_rcu();
-	ima_lsm_free_rule(entry);
+	ima_free_rule(entry);
 
 	return 0;
 }
