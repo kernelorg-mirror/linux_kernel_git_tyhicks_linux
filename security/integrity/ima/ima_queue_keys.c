@@ -156,7 +156,7 @@ void ima_process_queued_keys(void)
 			process_buffer_measurement(entry->payload,
 						   entry->payload_len,
 						   entry->keyring_name,
-						   KEY_CHECK, 0,
+						   KEY_CHECK, 0, NULL,
 						   entry->keyring_name);
 		list_del(&entry->list);
 		ima_free_key_entry(entry);
