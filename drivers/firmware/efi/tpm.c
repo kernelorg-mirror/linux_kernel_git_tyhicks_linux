@@ -78,6 +78,9 @@ int __init efi_tpm_eventlog_init(void)
 		goto out;
 	}
 
+	WARN(!log_tbl->size && final_tbl->nr_events,
+	     "nr_events = %llu\n", final_tbl->nr_events);
+
 	tbl_size = 0;
 	if (final_tbl->nr_events != 0) {
 		void *events = (void *)efi.tpm_final_log
@@ -94,6 +97,8 @@ int __init efi_tpm_eventlog_init(void)
 		ret = -EINVAL;
 		goto out_calc;
 	}
+
+	WARN(!log_tbl->size && tbl_size, "tbl_size = %d\n", tbl_size);
 
 	memblock_reserve((unsigned long)final_tbl,
 			 tbl_size + sizeof(*final_tbl));
